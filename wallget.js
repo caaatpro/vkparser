@@ -2,7 +2,8 @@ const VK = require('vksdk'),
   fs = require('fs'),
   https = require('https'),
   sqlite3 = require('sqlite3').verbose(),
-
+  dateFormat = require('dateformat'),
+  xlsx = require('node-xlsx').default,
 
   db = new sqlite3.Database('wall.db');
 
@@ -27,7 +28,6 @@ if (process.argv <= 2) {
 
 var screen_name = process.argv[2],
   id = 0,
-  albums = {},
   photos = [],
   dir = '';
 
@@ -47,7 +47,11 @@ vk.setSecureRequests(true);
 vk.setToken(settings.access_token);
 
 console.log('Получаем id');
-isGroup()
+isGroup();
+
+var data = [
+  ['ID', "Текст", "Дата", "Репост", "Сылка на репост", "Сылка на пост", "Картинки" ]
+];
 
 function isGroup() {
   vk.request('groups.getById', {
@@ -104,26 +108,41 @@ function getPosts(offset, count) {
       var item = items[i],
         postID,
         text,
-        data,
-        repost,
+        date,
+        repost = false,
         link,
-        images;
+        repostLinks = '',
+        images = [];
 
       text = item.text;
+      postID = item.id;
+
+      link = "https://vk.com/" + screen_name + "?w=wall" + id + "_" + postID;
+
+      date = dateFormat(new Date(item.date * 1000), 'dd.mm.yyyy HH:MM');
 
       if (item.attachments) {
         var attachments = item.attachments;
         for (var j = 0; j < attachments.length; j++) {
           if (attachments[j].type == 'link') {
             text += '\n' + attachments[j].link.url;
+          } else if (attachments[j].type == 'photo') {
+            getPhotoUrl(attachments[j].photo, postID);
           }
         }
       }
 
-      console.log(text);
-
       if (item.copy_history) {
+        repost = true;
         for (var k = 0; k < item.copy_history.length; k++) {
+          var ll = "https://vk.com/public" + Math.abs(item.copy_history[k].owner_id) + "?w=wall" + item.copy_history[k].owner_id + "_" + item.copy_history[k].id;
+
+          if (repostLinks != '') {
+            repostLinks += ',' + ll;
+          } else {
+            repostLinks = ll;
+          }
+
           text += '\n' + item.copy_history[k].text;
 
           if (item.copy_history[k].attachments) {
@@ -132,43 +151,113 @@ function getPosts(offset, count) {
             for (var l = 0; l < attachments.length; l++) {
               if (attachments[l].type == 'link') {
                 text += '\n' + attachments[l].link.url;
+              } else if (attachments[l].type == 'photo') {
+                images.push(getPhotoUrl(attachments[l].photo, postID));
               }
             }
           }
         }
       }
+      console.log(repostLinks);
+      // console.log(images);
+      console.log(item);
+
+      var dirAttachments = dir + '/' + postID;
+      if (!fs.existsSync(dirAttachments)) {
+        fs.mkdirSync(dirAttachments);
+      }
 
       // console.log(item);
+
+      data.push([
+        postID,
+        text,
+        date,
+        repost ? "Нет" : 'Да',
+        link,
+        repostLinks,
+        images.join(',')
+      ]);
     }
 
     if (_o.response.count > count + offset) {
       getPhotos(offset + count, count);
     } else {
       console.log("Все посты получены");
+      download(0);
     }
   });
 }
 
-function saveToDb(postID, text, data, repost, link, images) {
-  db.get('SELECT id FROM posts WHERE postID = ' + postID, function(err, row) {
-    if (err) {
-      console.log(err);
-      reject();
-      return;
-    }
+function saveData() {
+  console.log("Сохраняю данные");
 
-    if (row == undefined) {
-      db.run("INSERT INTO posts (postID, text, data, repost, link, images) VALUES (?, ?, ?, ?, ?, ?)", postID, text, data, repost, link, images, function(err, row) {
-        if (err) {
-          console.log(err);
-          reject();
-          return;
-        }
+  var buffer = xlsx.build([{name: "wall", data: data}]); // Returns a buffer
+  fs.open(screen_name+'.xlsx', 'w', function(err, fd) {
+      if (err) {
+          throw 'error opening file: ' + err;
+      }
 
-        return;
+      fs.write(fd, buffer, 0, buffer.length, null, function(err) {
+          if (err) throw 'error writing file: ' + err;
+          fs.close(fd, function() {
+              console.log('file written');
+          })
       });
-    } else {
-      return;
-    }
+  });
+}
+
+function getPhotoUrl(photo, postid) {
+  var url = '';
+  if (photo.photo_2560) {
+    url = photo.photo_2560;
+  } else if (photo.photo_1280) {
+    url = photo.photo_1280;
+  } else if (photo.photo_807) {
+    url = photo.photo_807;
+  } else if (photo.photo_604) {
+    url = photo.photo_604;
+  } else if (photo.photo_130) {
+    url = photo.photo_130;
+  } else if (photo.photo_75) {
+    url = photo.photo_75;
+  }
+
+  var file = dir + '/' + postid + '/' + url.substr(url.lastIndexOf('/') + 1);
+
+  photos.push({
+    url: url,
+    file: file
+  });
+
+  return file;
+}
+
+
+function download(i) {
+
+  if (i >= photos.length) {
+    console.log("Скачивание завершено");
+    saveData();
+    return;
+  }
+  downloader(photos[i].url, photos[i].file, i);
+}
+
+function downloader(url, f, i) {
+  console.log(i + " Start " + url);
+  var file = fs.createWriteStream(f);
+  var request = https.get(url, function(response) {
+    response.pipe(file);
+    file.on('finish', function() {
+      console.log(i + " Finish " + url);
+      file.close(); // close() is async, call callback after close completes.
+      download(i + 1);
+    });
+    file.on('error', function(err) {
+      console.log(i + " Error " + url);
+      fs.unlink(dest); // Delete the file async. (But we don't check the result)
+      console.log(err.message);
+    });
   });
 }
