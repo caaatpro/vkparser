@@ -127,7 +127,7 @@ function getPosts(offset, count) {
           if (attachments[j].type == 'link') {
             text += '\n' + attachments[j].link.url;
           } else if (attachments[j].type == 'photo') {
-            getPhotoUrl(attachments[j].photo, postID);
+            images.push(getPhotoUrl(attachments[j].photo, postID));
           }
         }
       }
@@ -181,7 +181,7 @@ function getPosts(offset, count) {
     }
 
     if (_o.response.count > count + offset) {
-      getPhotos(offset + count, count);
+      getPosts(offset + count, count);
     } else {
       console.log("Все посты получены");
       download(0);
