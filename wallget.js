@@ -1,17 +1,14 @@
 const VK = require('vksdk'),
   fs = require('fs'),
   https = require('https'),
-  sqlite3 = require('sqlite3').verbose(),
   dateFormat = require('dateformat'),
-  xlsx = require('node-xlsx').default,
-
-  db = new sqlite3.Database('wall.db');
+  xlsx = require('node-xlsx').defaultж
 
 var settings = {
-  appId: 5931573,
-  appSecret: '0F4bg8Y96gkiBHkOLRZT',
+  appId: ид,
+  appSecret: 'секретный ключ',
   scope: 'wall,offline,photos',
-  access_token: 'b37e182591481d31a786186133293058b44b98dfa3a0d501abe1d5f0cfafa3cfdaef03670632a5cf8ed42'
+  access_token: ''
 };
 
 var lastRequest = 0;
@@ -201,7 +198,7 @@ function saveData() {
       fs.write(fd, buffer, 0, buffer.length, null, function(err) {
           if (err) throw 'error writing file: ' + err;
           fs.close(fd, function() {
-              console.log('file written');
+              console.log('Данные сохранены');
           })
       });
   });

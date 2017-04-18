@@ -3,10 +3,10 @@ const VK = require('vksdk'),
   https = require('https');
 
 var settings = {
-  appId: 5931573,
-  appSecret: '0F4bg8Y96gkiBHkOLRZT',
+  appId: ид,
+  appSecret: 'секретный ключ',
   scope: 'wall,offline,photos',
-  access_token: 'b37e182591481d31a786186133293058b44b98dfa3a0d501abe1d5f0cfafa3cfdaef03670632a5cf8ed42'
+  access_token: ''
 };
 
 var lastRequest = 0;
