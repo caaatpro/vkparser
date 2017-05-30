@@ -6,16 +6,16 @@ const VK = require('vksdk'),
   VKApi = require('node-vkapi');
 
 var settings = {
-  appId: ид,
-  appSecret: 'секретный ключ',
+  appId: '4881790',
+  appSecret: 'TBhHzcDd47lgc71z59xt',
   scope: 'wall,offline,photos',
-  access_token: ''
+  access_token: '06efa3b3b7a6629142917843d0cd7ddc4edb7d2bfee9ecb4df144eef6cc67d110f7d6b5220fffc5577200'
 };
 
 var lastRequest = 0;
 
 if (settings.access_token == '') {
-  console.log('Ссылка получения access_token: https://oauth.vk.com/authorize?client_id=' + settings.appId + '&display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=' + settings.scope + '&response_type=token&expires_in=0&v=5.62');
+  console.log('Ссылка получения access_token: https://oauth.vk.com/authorize?client_id=' + settings.appId + '&display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=' + settings.scope + '&response_type=token&expires_in=0&v=5.63');
   process.exit();
 }
 
@@ -37,7 +37,7 @@ var screen_name_from = process.argv[2],
 var vk = new VK({
   'appId': settings.appId,
   'appSecret': settings.appSecret,
-  'version': '5.62'
+  'version': '5.63'
 });
 
 
@@ -69,10 +69,10 @@ function isGroup(screen_name, to) {
         return;
       }
     } else {
-      if (to) {
-        id_to = -_o.response[0].id;
-      } else {
+      if (screen_name_from === screen_name) {
         id_from = -_o.response[0].id;
+      } else {
+        id_to = -_o.response[0].id;
       }
 
       if (id_from && id_to) {
@@ -109,10 +109,10 @@ function post(i) {
   photosData = [];
   if (data[i][6] != '') {
     var postPhotos = data[i][6].split(',');
-    console.log(postPhotos.length);
+    // console.log(postPhotos.length);
     for (var j = 0; j < postPhotos.length; j++) {
       if (fs.existsSync(postPhotos[j])) {
-        console.log(postPhotos[j]);
+        // console.log(postPhotos[j]);
         photos.push(postPhotos[j]);
       }
     }
@@ -123,7 +123,7 @@ function post(i) {
 }
 
 function wallpost(i) {
-  console.log(photosData);
+  // console.log(photosData);
   // post(i + 1);
   var attachments = '';
 
@@ -141,9 +141,9 @@ function wallpost(i) {
 
   vk.request('wall.post', {
     owner_id: id_to,
-    from_group: 1,
-    message: data[i][1],
-    attachments: attachments
+    // from_group: 1,
+    message: data[i][1]
+    // attachments: attachments
     //publish_date:
   }, function(_o) {
     if (_o.error) {
@@ -151,6 +151,14 @@ function wallpost(i) {
         console.log("Не верный идентификатор");
         process.exit();
       } else {
+      console.log({
+        owner_id: id_to,
+        from_group: 1,
+        message: data[i][1],
+        attachments: attachments
+        //publish_date:
+      });
+      console.log(_o.error.request_params);
         console.log(_o.error.error_msg);
         return;
       }
